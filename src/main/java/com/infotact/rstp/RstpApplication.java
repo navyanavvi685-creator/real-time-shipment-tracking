@@ -1,0 +1,13 @@
+package com.infotact.rstp;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class RstpApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(RstpApplication.class, args);
+	}
+
+}
