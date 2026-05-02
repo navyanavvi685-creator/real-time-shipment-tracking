@@ -4,22 +4,24 @@ import { loginUser, saveAuth } from "../services/api";
 import "./login.css";
 
 function Login() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
       const data = await loginUser(email, password);
       saveAuth(data);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Login failed ❌");
     } finally {
       setLoading(false);
     }
@@ -41,6 +43,7 @@ function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+
           <input
             type="password"
             placeholder="Enter Password"
@@ -48,13 +51,15 @@ function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
           <button type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <p className="link">
-          Don't have an account? <a href="/register">Register</a>
+          Don't have an account?{" "}
+          <span onClick={() => navigate("/register")}>Register</span>
         </p>
       </div>
     </div>
