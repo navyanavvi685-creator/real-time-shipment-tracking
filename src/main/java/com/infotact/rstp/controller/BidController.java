@@ -3,6 +3,7 @@ package com.infotact.rstp.controller;
 import com.infotact.rstp.dto.BidRequest;
 import com.infotact.rstp.dto.BidResponse;
 import com.infotact.rstp.service.BidService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class BidController {
     }
 
     @PostMapping
-    public BidResponse placeBid(@RequestBody BidRequest request) {
+    public BidResponse placeBid(@Valid @RequestBody BidRequest request) {
         return bidService.placeBid(request);
     }
 
