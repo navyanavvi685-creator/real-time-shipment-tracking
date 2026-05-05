@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.infotact.rstp.exception.InvalidShipmentStatusException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -55,6 +57,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         log.warn("Invalid login attempt");
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid email or password", null);
+    }
+
+    @ExceptionHandler(InvalidShipmentStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidShipmentStatus(InvalidShipmentStatusException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
     }
 
     // ── Catch-all ─────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ package com.infotact.rstp.controller;
 
 import com.infotact.rstp.dto.ShipmentRequest;
 import com.infotact.rstp.dto.ShipmentResponse;
+import com.infotact.rstp.dto.ShipmentStatusUpdateRequest;
 import com.infotact.rstp.service.ShipmentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,17 @@ public class ShipmentController {
     @GetMapping("/{id}")
     public ResponseEntity<ShipmentResponse> getShipmentById(@PathVariable Long id) {
         return ResponseEntity.ok(shipmentService.getShipmentById(id));
+    }
+
+    @PreAuthorize("hasRole('CARRIER')")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ShipmentResponse> updateShipmentStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody ShipmentStatusUpdateRequest request) {
+
+        return ResponseEntity.ok(
+                shipmentService.updateShipmentStatus(id, request.getCarrierId(), request.getStatus())
+        );
     }
 
     @PreAuthorize("hasRole('SHIPPER')")
