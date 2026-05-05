@@ -1,11 +1,20 @@
 package com.infotact.rstp.dto;
 
 import java.math.BigDecimal;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public class BidRequest {
-    private Long shipmentId;
-    private Long carrierId;
-    private BigDecimal bidPrice;
+    @NotNull(message = "Shipment ID is required")
+	private Long shipmentId;
+
+	@NotNull(message = "Carrier ID is required")
+	private Long carrierId;
+
+	@NotNull(message = "Bid price is required")
+	@Positive(message = "Bid price must be greater than 0")
+	private BigDecimal bidPrice;
+    
     private String message;
 
     public Long getShipmentId() {
