@@ -94,6 +94,62 @@ public class ShipmentServiceImpl implements ShipmentService {
         shipmentRepository.delete(shipment);
     }
 
+    // ✅ GET SHIPMENT BY ID
+    @Override
+    public ShipmentResponse getShipmentById(Long shipmentId) {
+        Shipment shipment = shipmentRepository.findById(shipmentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Shipment not found with id: " + shipmentId)
+                );
+
+        return mapToResponse(shipment);
+    }
+
+    // ✅ UPDATE SHIPMENT
+    @Override
+    public ShipmentResponse updateShipment(Long shipmentId, ShipmentRequest request) {
+        Shipment shipment = shipmentRepository.findById(shipmentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Shipment not found with id: " + shipmentId)
+                );
+
+        shipment.setTitle(request.getTitle());
+        shipment.setDescription(request.getDescription());
+        shipment.setOrigin(request.getOrigin());
+        shipment.setDestination(request.getDestination());
+        shipment.setWeight(request.getWeight());
+        shipment.setPriceExpected(request.getPriceExpected());
+
+        return mapToResponse(shipmentRepository.save(shipment));
+    }
+
+    // ✅ UPDATE SHIPMENT STATUS
+    @Override
+    public ShipmentResponse updateShipmentStatus(Long shipmentId, Long carrierId, ShipmentStatus status) {
+        Shipment shipment = shipmentRepository.findById(shipmentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Shipment not found with id: " + shipmentId)
+                );
+
+        User carrier = userRepository.findById(carrierId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Carrier not found with id: " + carrierId)
+                );
+
+        if (carrier.getRole() != Role.CARRIER) {
+            throw new IllegalArgumentException("User is not a CARRIER");
+        }
+
+        if (shipment.getAwardedCarrier() == null ||
+                !shipment.getAwardedCarrier().getId().equals(carrierId)) {
+            throw new IllegalArgumentException("Carrier is not awarded to this shipment");
+        }
+
+        shipment.setStatus(status);
+
+        return mapToResponse(shipmentRepository.save(shipment));
+    }
+
     // ✅ RESPONSE MAPPER
     private ShipmentResponse mapToResponse(Shipment shipment) {
 
