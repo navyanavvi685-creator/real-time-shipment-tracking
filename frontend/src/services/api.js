@@ -102,6 +102,14 @@ export const assignCarrier = (shipmentId, carrierId) =>
     true
   );
 
+export const updateShipmentStatus = (shipmentId, carrierId, status) =>
+  request(
+    "PATCH",
+    `/api/shipments/${shipmentId}/status`,
+    { carrierId, status },
+    true
+  );
+
 // ─── NOTIFICATIONS ────────────────────────────
 
 export const getNotifications = (userId) =>

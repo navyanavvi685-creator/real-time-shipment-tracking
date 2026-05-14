@@ -18,7 +18,8 @@ import {
   createShipment, 
   placeBid, 
   getBidsByShipment, 
-  acceptLowestBid 
+  acceptLowestBid,
+  updateShipmentStatus
 } from "../services/api";
 import websocketService from "../services/websocket";
 import TrackingMap from "../components/TrackingMap";
@@ -161,11 +162,23 @@ const Dashboard = () => {
     if (!window.confirm("Accept the lowest bid?")) return;
     try {
       await acceptLowestBid(shipmentId);
-      alert("Lowest bid accepted! Shipment is now IN_TRANSIT.");
+      alert("Lowest bid accepted! Shipment is now AWARDED.");
       setViewingBidsFor(null);
       fetchShipments();
     } catch (err) {
       alert("Failed to accept bid: " + err.message);
+    }
+  };
+
+  const handleStartShipment = async (e, shipmentId) => {
+    e.stopPropagation();
+    if (!window.confirm("Start this shipment and begin GPS tracking?")) return;
+    try {
+      await updateShipmentStatus(shipmentId, userId, "IN_TRANSIT");
+      alert("Shipment started! It is now IN_TRANSIT.");
+      fetchShipments();
+    } catch (err) {
+      alert("Failed to start shipment: " + err.message);
     }
   };
 
@@ -285,8 +298,25 @@ const Dashboard = () => {
                   )}
 
                   {/* Tracking Logic */}
+                  {role === "CARRIER" && s.status === "AWARDED" && (
+                    <button 
+                      className="track-btn" 
+                      onClick={(e) => handleStartShipment(e, s.shipmentId)}
+                      style={{ borderColor: '#10b981', color: '#10b981' }}
+                    >
+                      <MapIcon size={14} style={{ marginRight: '4px' }}/> 
+                      Start Shipment
+                    </button>
+                  )}
+
                   {s.status === "IN_TRANSIT" && (
-                    <button className="track-btn">
+                    <button 
+                      className="track-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTracking(s);
+                      }}
+                    >
                       <MapIcon size={14} style={{ marginRight: '4px' }}/> 
                       {activeTracking === s.shipmentId ? "Stop Tracking" : "Live Track"}
                     </button>
