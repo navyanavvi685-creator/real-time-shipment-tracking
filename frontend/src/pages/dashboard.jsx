@@ -251,7 +251,7 @@ const Dashboard = () => {
                 onClick={() => startTracking(s)}
               >
                 <div className="card-top">
-                  <span className={`status-pill ${(s.status || 'OPEN').toLowerCase()}`}>{s.status || 'OPEN'}</span>
+                  <span className={`status-pill ${String(s.status || 'OPEN').toLowerCase()}`}>{s.status || 'OPEN'}</span>
                   <span className="price-tag">₹{s.priceExpected || 0}</span>
                 </div>
                 <h4>{s.origin || 'N/A'} <Navigation size={14} className="arrow" /> {s.destination || 'N/A'}</h4>
@@ -309,12 +309,12 @@ const Dashboard = () => {
                 </button>
               </div>
               <div className="bids-grid">
-                {bids[viewingBidsFor]?.length > 0 ? (
+                {Array.isArray(bids[viewingBidsFor]) && bids[viewingBidsFor].length > 0 ? (
                   bids[viewingBidsFor].map(bid => (
                     <div key={bid.bidId} className="bid-card">
                       <div className="bid-amount">₹{bid.bidPrice}</div>
                       <div className="bid-carrier">Carrier ID: {bid.carrierId}</div>
-                      <div className="bid-message">"{bid.message}"</div>
+                      <div className="bid-message">"{bid.message || 'No message'}"</div>
                     </div>
                   ))
                 ) : (

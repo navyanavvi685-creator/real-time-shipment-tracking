@@ -35,7 +35,7 @@ const MOCK_COORDS = {
 };
 
 const getCoordinates = (cityStr) => {
-    if (!cityStr) return null;
+    if (!cityStr || typeof cityStr !== 'string') return null;
     const key = cityStr.toLowerCase().trim();
     return MOCK_COORDS[key] || null;
 };
