@@ -166,6 +166,14 @@ public class ShipmentServiceImpl implements ShipmentService {
         );
     }
 
+    @Override
+    public List<ShipmentResponse> getAvailableShipments() {
+        return shipmentRepository.findByStatus(ShipmentStatus.OPEN)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
     // ✅ RESPONSE MAPPER
     private ShipmentResponse mapToResponse(Shipment shipment) {
 
