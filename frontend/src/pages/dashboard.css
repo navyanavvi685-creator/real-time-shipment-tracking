@@ -261,6 +261,28 @@
 ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
+/* 🌀 LOADING SCREEN */
+.loading-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  gap: 1.5rem;
+}
+
+.spinner {
+  color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 1024px) {
   .dashboard-content { grid-template-columns: 1fr; height: auto; }
   .shipments-panel, .notif-panel { border: none; height: 500px; }

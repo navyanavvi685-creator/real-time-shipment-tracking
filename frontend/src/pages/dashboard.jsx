@@ -9,7 +9,8 @@ import {
   Truck, 
   Map as MapIcon,
   CheckCircle,
-  Clock
+  Clock,
+  Loader
 } from "lucide-react";
 import { getAllShipments, createShipment, assignCarrier } from "../services/api";
 import websocketService from "../services/websocket";
@@ -23,70 +24,82 @@ const Dashboard = () => {
   const [trackingData, setTrackingData] = useState({});
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newShipment, setNewShipment] = useState({ origin: "", destination: "", price: "" });
+  const [loading, setLoading] = useState(true);
 
-  const role = localStorage.getItem("role");
+  const role = localStorage.getItem("role") || "USER";
   const userId = localStorage.getItem("userId");
-  const email = localStorage.getItem("email");
+  const email = localStorage.getItem("email") || "Guest";
   const token = localStorage.getItem("token");
 
   // ─── INITIAL FETCH ──────────────────────────────────
   const fetchShipments = useCallback(async () => {
     try {
+      setLoading(true);
       const data = await getAllShipments();
-      setShipments(data);
+      setShipments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   // ─── WEBSOCKET SETUP ────────────────────────────────
   useEffect(() => {
     if (token) {
-      websocketService.connect(token);
-      
-      // Subscribe to global notifications
-      websocketService.subscribe('/topic/notifications', (msg) => {
-        setNotifications(prev => [{ id: Date.now(), ...msg }, ...prev].slice(0, 5));
-      });
-
-      // Subscribe to personal notifications if userId exists
-      if (userId) {
-        websocketService.subscribe(`/topic/notifications/${userId}`, (msg) => {
-          setNotifications(prev => [{ id: Date.now(), ...msg }, ...prev].slice(0, 5));
+      try {
+        websocketService.connect(token);
+        
+        websocketService.subscribe('/topic/notifications', (msg) => {
+          setNotifications(prev => [{ id: Date.now(), message: msg.message || msg }, ...prev].slice(0, 5));
         });
+
+        if (userId) {
+          websocketService.subscribe(`/topic/notifications/${userId}`, (msg) => {
+            setNotifications(prev => [{ id: Date.now(), message: msg.message || msg }, ...prev].slice(0, 5));
+          });
+        }
+      } catch (wsErr) {
+        console.error("WS Connection Error:", wsErr);
       }
     }
 
     fetchShipments();
 
-    return () => websocketService.disconnect();
+    return () => {
+      try {
+        websocketService.disconnect();
+      } catch (err) {}
+    };
   }, [token, userId, fetchShipments]);
 
   // ─── TRACKING SUBSCRIPTION ─────────────────────────
   const startTracking = (shipmentId) => {
+    if (!shipmentId) return;
+
     if (activeTracking === shipmentId) {
       websocketService.unsubscribe(`/topic/tracking/${shipmentId}`);
       setActiveTracking(null);
       return;
     }
 
-    // Unsubscribe from previous if any
     if (activeTracking) {
       websocketService.unsubscribe(`/topic/tracking/${activeTracking}`);
     }
 
     setActiveTracking(shipmentId);
     websocketService.subscribe(`/topic/tracking/${shipmentId}`, (data) => {
-      setTrackingData(prev => ({ ...prev, [shipmentId]: data }));
+      if (data) {
+        setTrackingData(prev => ({ ...prev, [shipmentId]: data }));
+      }
     });
   };
 
-  // ─── HANDLERS ──────────────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
       const payload = {
-        title: `${newShipment.origin} → ${newShipment.destination}`,
+        title: `${newShipment.origin} to ${newShipment.destination}`,
         origin: newShipment.origin,
         destination: newShipment.destination,
         priceExpected: Number(newShipment.price),
@@ -99,18 +112,21 @@ const Dashboard = () => {
       setNewShipment({ origin: "", destination: "", price: "" });
       fetchShipments();
     } catch (err) {
-      alert("Failed to create shipment");
+      alert("Failed to create shipment: " + err.message);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
-  };
+  if (loading && shipments.length === 0) {
+    return (
+      <div className="loading-screen">
+        <Loader className="spinner" size={48} />
+        <p>Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-root">
-      {/* 🧭 NAVIGATION */}
       <nav className="glass-nav">
         <div className="nav-logo">
           <Navigation className="logo-icon" />
@@ -121,12 +137,13 @@ const Dashboard = () => {
             <span className="user-email">{email}</span>
             <span className="user-role">{role}</span>
           </div>
-          <button onClick={handleLogout} className="icon-btn logout"><LogOut size={20} /></button>
+          <button onClick={() => { localStorage.clear(); window.location.href = "/login"; }} className="icon-btn logout">
+            <LogOut size={20} />
+          </button>
         </div>
       </nav>
 
       <div className="dashboard-content">
-        {/* 📟 LEFT PANEL: SHIPMENTS */}
         <aside className="shipments-panel">
           <header className="panel-header">
             <h3><Package size={20} /> My Shipments</h3>
@@ -140,11 +157,8 @@ const Dashboard = () => {
           <AnimatePresence>
             {isCreateOpen && (
               <motion.form 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                onSubmit={handleCreate} 
-                className="create-form-card"
+                initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                onSubmit={handleCreate} className="create-form-card"
               >
                 <input placeholder="Origin" value={newShipment.origin} onChange={e => setNewShipment({...newShipment, origin: e.target.value})} required />
                 <input placeholder="Destination" value={newShipment.destination} onChange={e => setNewShipment({...newShipment, destination: e.target.value})} required />
@@ -157,16 +171,15 @@ const Dashboard = () => {
           <div className="shipment-list">
             {shipments.map((s) => (
               <motion.div 
-                layout
-                key={s.shipmentId} 
+                layout key={s.shipmentId} 
                 className={`shipment-card ${activeTracking === s.shipmentId ? 'active' : ''}`}
                 onClick={() => startTracking(s.shipmentId)}
               >
                 <div className="card-top">
-                  <span className={`status-pill ${s.status.toLowerCase()}`}>{s.status}</span>
-                  <span className="price-tag">₹{s.priceExpected}</span>
+                  <span className={`status-pill ${(s.status || 'OPEN').toLowerCase()}`}>{s.status || 'OPEN'}</span>
+                  <span className="price-tag">₹{s.priceExpected || 0}</span>
                 </div>
-                <h4>{s.origin} <Navigation size={14} className="arrow" /> {s.destination}</h4>
+                <h4>{s.origin || 'N/A'} <Navigation size={14} className="arrow" /> {s.destination || 'N/A'}</h4>
                 <div className="card-actions">
                   <button className="track-btn">
                     {activeTracking === s.shipmentId ? "Stop Tracking" : "Live Track"}
@@ -174,10 +187,10 @@ const Dashboard = () => {
                 </div>
               </motion.div>
             ))}
+            {!loading && shipments.length === 0 && <p className="empty-msg">No shipments found</p>}
           </div>
         </aside>
 
-        {/* 🗺️ CENTER PANEL: MAP */}
         <main className="map-panel">
           {activeTracking ? (
             <div className="map-container-inner">
@@ -189,7 +202,7 @@ const Dashboard = () => {
               <div className="tracking-overlay">
                 <div className="overlay-pill">
                   <Clock size={16} /> 
-                  <span>Latest Update: {trackingData[activeTracking]?.eventTimestamp ? new Date(trackingData[activeTracking].eventTimestamp).toLocaleTimeString() : 'Waiting for pings...'}</span>
+                  <span>{trackingData[activeTracking]?.eventTimestamp ? new Date(trackingData[activeTracking].eventTimestamp).toLocaleTimeString() : 'Awaiting GPS...'}</span>
                 </div>
               </div>
             </div>
@@ -198,29 +211,23 @@ const Dashboard = () => {
               <div className="placeholder-content">
                 <MapIcon size={64} />
                 <h2>Select a shipment to begin live tracking</h2>
-                <p>Real-time GPS updates will appear here once you select an active shipment.</p>
+                <p>Real-time GPS updates will appear here.</p>
               </div>
             </div>
           )}
         </main>
 
-        {/* 🔔 RIGHT PANEL: NOTIFICATIONS */}
         <aside className="notif-panel">
           <header className="panel-header">
             <h3><Bell size={20} /> Alerts</h3>
           </header>
           <div className="notif-list">
             {notifications.map((n) => (
-              <motion.div 
-                initial={{ x: 50, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                key={n.id} 
-                className="notif-card"
-              >
+              <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} key={n.id} className="notif-card">
                 <div className="notif-icon"><CheckCircle size={16} /></div>
                 <div className="notif-body">
-                  <p>{n.message || n.eventType}</p>
-                  <small>{new Date().toLocaleTimeString()}</small>
+                  <p>{n.message}</p>
+                  <small>{new Date(n.id).toLocaleTimeString()}</small>
                 </div>
               </motion.div>
             ))}

@@ -3,40 +3,45 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default marker icons in Leaflet + React
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+// Fix for default marker icons using CDN links for better reliability
+const defaultIcon = new L.Icon({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: markerIcon2x,
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
+// Truck icon for the shipment
+const truckIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
 });
 
 // Component to dynamically update map center
 function ChangeView({ center }) {
     const map = useMap();
-    map.setView(center, map.getZoom());
+    useEffect(() => {
+        if (center) {
+            map.setView(center, map.getZoom());
+        }
+    }, [center, map]);
     return null;
 }
 
 const TrackingMap = ({ latitude, longitude, locationDesc }) => {
-    const position = [latitude || 20.5937, longitude || 78.9629]; // Default to India center
-
-    const customIcon = new L.Icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png', // Truck icon
-        iconSize: [38, 38],
-        iconAnchor: [19, 38],
-        popupAnchor: [0, -38]
-    });
+    // Default to India center if no coordinates
+    const position = latitude && longitude ? [latitude, longitude] : [20.5937, 78.9629];
 
     return (
         <MapContainer 
             center={position} 
-            zoom={13} 
-            style={{ height: '100%', width: '100%', borderRadius: '12px' }}
+            zoom={latitude && longitude ? 13 : 5} 
+            style={{ height: '100%', width: '100%', borderRadius: '12px', background: '#1e293b' }}
         >
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -45,7 +50,7 @@ const TrackingMap = ({ latitude, longitude, locationDesc }) => {
             {latitude && longitude && (
                 <>
                     <ChangeView center={position} />
-                    <Marker position={position} icon={customIcon}>
+                    <Marker position={position} icon={truckIcon}>
                         <Popup>
                             <strong>Live Location</strong> <br />
                             {locationDesc || 'In Transit'}
@@ -56,5 +61,8 @@ const TrackingMap = ({ latitude, longitude, locationDesc }) => {
         </MapContainer>
     );
 };
+
+// Internal useEffect fix for ChangeView
+import { useEffect } from 'react';
 
 export default TrackingMap;
