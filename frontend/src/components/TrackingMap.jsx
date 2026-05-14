@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, FeatureGroup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -80,7 +80,7 @@ const TrackingMap = ({ latitude, longitude, locationDesc, originStr, destStr }) 
 
             {/* Draw Planned Route */}
             {routeCoordinates.length === 2 && (
-                <>
+                <FeatureGroup>
                     <Polyline positions={routeCoordinates} color="#6366f1" weight={4} dashArray="10, 10" />
                     <Marker position={originCoords} icon={defaultIcon}>
                         <Popup>Origin: {originStr}</Popup>
@@ -88,7 +88,7 @@ const TrackingMap = ({ latitude, longitude, locationDesc, originStr, destStr }) 
                     <Marker position={destCoords} icon={defaultIcon}>
                         <Popup>Destination: {destStr}</Popup>
                     </Marker>
-                </>
+                </FeatureGroup>
             )}
 
             {/* Draw Live Truck */}
