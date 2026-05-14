@@ -23,7 +23,7 @@ import {
   updateShipmentStatus
 } from "../services/api";
 import websocketService from "../services/websocket";
-import TrackingMap from "../components/TrackingMap";
+import TrackingMap, { getCoordinates } from "../components/TrackingMap";
 import "./dashboard.css";
 
 const Dashboard = () => {
@@ -127,6 +127,57 @@ const Dashboard = () => {
     });
   };
 
+  // ─── GPS SIMULATION EFFECT ─────────────────────────
+  useEffect(() => {
+    let interval;
+    if (activeTracking && role === "CARRIER") {
+      const activeShipment = shipments.find(s => s.shipmentId === activeTracking);
+      if (activeShipment && activeShipment.status === "IN_TRANSIT") {
+        const originCoords = getCoordinates(activeShipment.origin);
+        const destCoords = getCoordinates(activeShipment.destination);
+        
+        if (originCoords && destCoords) {
+          // Initialize simulated position
+          let currentLat = originCoords[0];
+          let currentLng = originCoords[1];
+          let step = 0;
+          const totalSteps = 20;
+
+          const latStep = (destCoords[0] - originCoords[0]) / totalSteps;
+          const lngStep = (destCoords[1] - originCoords[1]) / totalSteps;
+
+          interval = setInterval(() => {
+            if (step >= totalSteps) {
+              clearInterval(interval);
+              return;
+            }
+            
+            step++;
+            currentLat += latStep;
+            currentLng += lngStep;
+            
+            const payload = {
+              shipmentId: activeTracking,
+              carrierId: parseInt(userId),
+              latitude: currentLat,
+              longitude: currentLng,
+              locationDesc: `In Transit towards ${activeShipment.destination}...`,
+              eventTimestamp: new Date().toISOString()
+            };
+            
+            // Publish the fake GPS coordinates to the STOMP broker
+            websocketService.send('/app/tracking.update', payload);
+            console.log("📍 Published simulated GPS ping:", payload);
+          }, 4000); // Send ping every 4 seconds
+        }
+      }
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTracking, role, shipments]);
+
   // ─── BIDDING HANDLERS ──────────────────────────────
   const handlePlaceBid = async (e, shipmentId) => {
     e.stopPropagation();
@@ -183,6 +234,22 @@ const Dashboard = () => {
     }
   };
 
+  const handleEndShipment = async (e, shipmentId) => {
+    e.stopPropagation();
+    if (!window.confirm("Mark this shipment as DELIVERED?")) return;
+    try {
+      await updateShipmentStatus(shipmentId, userId, "DELIVERED");
+      alert("Shipment Delivered successfully! 🎉");
+      if (activeTracking === shipmentId) {
+          websocketService.unsubscribe(`/topic/tracking/${shipmentId}`);
+          setActiveTracking(null);
+      }
+      fetchShipments();
+    } catch (err) {
+      alert("Failed to end shipment: " + err.message);
+    }
+  };
+
   // ─── SHIPMENT HANDLERS ─────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -213,7 +280,6 @@ const Dashboard = () => {
       </div>
     );
   }
->>>>>>> Stashed changes
 
   return (
     <div className="dashboard-root">
@@ -313,16 +379,30 @@ const Dashboard = () => {
                   )}
 
                   {s.status === "IN_TRANSIT" && (
-                    <button 
-                      className="track-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startTracking(s);
-                      }}
-                    >
-                      <MapIcon size={14} style={{ marginRight: '4px' }}/> 
-                      {activeTracking === s.shipmentId ? "Stop Tracking" : "Live Track"}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        className="track-btn"
+                        style={{ flex: 1 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startTracking(s);
+                        }}
+                      >
+                        <MapIcon size={14} style={{ marginRight: '4px' }}/> 
+                        {activeTracking === s.shipmentId ? "Stop Tracking" : "Live Track"}
+                      </button>
+
+                      {role === "CARRIER" && (
+                        <button 
+                          className="track-btn"
+                          style={{ flex: 1, borderColor: '#f59e0b', color: '#f59e0b' }}
+                          onClick={(e) => handleEndShipment(e, s.shipmentId)}
+                        >
+                          <CheckCircle size={14} style={{ marginRight: '4px' }}/> 
+                          Mark Delivered
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
 
